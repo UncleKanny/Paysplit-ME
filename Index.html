@@ -1,0 +1,214 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="theme-color" content="#101827">
+  <title>PaySplit ME</title>
+  <style>
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: Arial, sans-serif;
+      background: #101827;
+      color: #f8fafc;
+    }
+    header {
+      padding: 22px 18px;
+      background: #172338;
+      border-bottom: 1px solid #334155;
+    }
+    header h1 { margin: 0; color: #55dfb0; }
+    header p { color: #aab8ca; margin-bottom: 0; }
+    main { padding: 20px; max-width: 650px; margin: auto; }
+    .card {
+      background: #1c2b40;
+      padding: 20px;
+      border-radius: 14px;
+      margin-bottom: 18px;
+      border: 1px solid #334155;
+    }
+    .stats {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+    }
+    .stat strong {
+      display: block;
+      font-size: 23px;
+      color: #55dfb0;
+      margin-top: 10px;
+    }
+    h2 { font-size: 19px; }
+    label { display: block; margin: 14px 0 7px; }
+    input {
+      width: 100%;
+      padding: 13px;
+      border-radius: 8px;
+      border: 1px solid #475569;
+      background: #101827;
+      color: white;
+      font-size: 16px;
+    }
+    button {
+      width: 100%;
+      padding: 14px;
+      margin-top: 15px;
+      border: 0;
+      border-radius: 9px;
+      background: #55dfb0;
+      color: #102033;
+      font-weight: bold;
+      font-size: 16px;
+    }
+    .group {
+      padding: 14px 0;
+      border-bottom: 1px solid #334155;
+    }
+    .muted { color: #aab8ca; font-size: 14px; }
+    .bar {
+      height: 9px;
+      background: #334155;
+      border-radius: 20px;
+      margin-top: 10px;
+      overflow: hidden;
+    }
+    .fill {
+      height: 100%;
+      background: #55dfb0;
+      width: 0%;
+    }
+    footer {
+      text-align: center;
+      padding: 25px;
+      color: #94a3b8;
+      font-size: 12px;
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>PaySplit ME</h1>
+    <p>Simple group payments. Transparent contributions.</p>
+  </header>
+
+  <main>
+    <div class="stats">
+      <div class="card stat">
+        Total Collected
+        <strong id="total">₦0</strong>
+      </div>
+      <div class="card stat">
+        Active Groups
+        <strong id="count">0</strong>
+      </div>
+    </div>
+
+    <section class="card">
+      <h2>Create a Payment Group</h2>
+      <form id="groupForm">
+        <label for="groupName">Group name</label>
+        <input id="groupName" placeholder="e.g. Birthday Contribution" required>
+
+        <label for="target">Contribution target (₦)</label>
+        <input id="target" type="number" min="1" placeholder="50000" required>
+
+        <button type="submit">Create Group</button>
+      </form>
+    </section>
+
+    <section class="card">
+      <h2>Your Payment Groups</h2>
+      <div id="groups">
+        <p class="muted">No groups yet. Create your first group above.</p>
+      </div>
+    </section>
+  </main>
+
+  <footer>
+    PaySplit ME · Built for the ME Network ecosystem
+    <br>Demo version · Payments are not yet connected to blockchain.
+  </footer>
+
+  <script>
+    const groups = [];
+
+    const money = amount =>
+      "₦" + Number(amount).toLocaleString("en-NG");
+
+    function render() {
+      document.getElementById("count").textContent = groups.length;
+
+      const total = groups.reduce((sum, group) =>
+        sum + group.paid, 0);
+
+      document.getElementById("total").textContent =
+        money(total);
+
+      const container = document.getElementById("groups");
+
+      if (!groups.length) {
+        container.innerHTML =
+          '<p class="muted">No groups yet. Create your first group above.</p>';
+        return;
+      }
+
+      container.innerHTML = groups.map((group, index) => {
+        const progress = Math.min(
+          100, group.paid / group.target * 100
+        );
+
+        return `
+          <div class="group">
+            <strong>${group.name}</strong>
+            <p class="muted">
+              ${money(group.paid)} raised of ${money(group.target)}
+            </p>
+            <div class="bar">
+              <div class="fill" style="width:${progress}%"></div>
+            </div>
+            <p class="muted">${Math.round(progress)}% completed</p>
+            <button onclick="addPayment(${index})">
+              Record Contribution
+            </button>
+          </div>
+        `;
+      }).join("");
+    }
+
+    document.getElementById("groupForm")
+      .addEventListener("submit", function(event) {
+        event.preventDefault();
+
+        const name =
+          document.getElementById("groupName").value.trim();
+
+        const target =
+          Number(document.getElementById("target").value);
+
+        if (!name || target <= 0) return;
+
+        groups.push({
+          name,
+          target,
+          paid: 0
+        });
+
+        this.reset();
+        render();
+      });
+
+    function addPayment(index) {
+      const amount = Number(
+        prompt("Enter contribution amount in Naira:")
+      );
+
+      if (!Number.isFinite(amount) || amount <= 0) return;
+
+      groups[index].paid += amount;
+      render();
+    }
+  </script>
+</body>
+</html>
