@@ -133,81 +133,140 @@
 
   <script>
     
-    const money = amount =>
-      "₦" + Number(amount).toLocaleString("en-NG");
+   const STORAGE_KEY = "paysplit-me-groups";
 
-    function render() {
-      document.getElementById("count").textContent = groups.length;
+// Load previously saved payment groups.
+function loadGroups() {
+  try {
+    const saved = localStorage.getItem(STORAGE_KEY);
+    const parsed = saved ? JSON.parse(saved) : [];
 
-      const total = groups.reduce((sum, group) =>
-        sum + group.paid, 0);
+    if (!Array.isArray(parsed)) return [];
 
-      document.getElementById("total").textContent =
-        money(total);
+    return parsed.filter(group =>
+      group &&
+      typeof group.name === "string" &&
+      Number.isFinite(Number(group.target)) &&
+      Number(group.target) > 0 &&
+      Number.isFinite(Number(group.paid)) &&
+      Number(group.paid) >= 0
+    ).map(group => ({
+      name: group.name,
+      target: Number(group.target),
+      paid: Number(group.paid)
+    }));
+  } catch (error) {
+    console.error("Could not load saved groups:", error);
+    return [];
+  }
+}
 
-      const container = document.getElementById("groups");
+const groups = loadGroups();
 
-      if (!groups.length) {
-        container.innerHTML =
-          '<p class="muted">No groups yet. Create your first group above.</p>';
-        return;
-      }
+// Save groups and contributions in the browser.
+function saveGroups() {
+  try {
+    localStorage.setItem(
+      STORAGE_KEY,
+      JSON.stringify(groups)
+    );
+  } catch (error) {
+    alert("Unable to save data. Please check your browser storage.");
+    console.error("Save error:", error);
+  }
+}
 
-      container.innerHTML = groups.map((group, index) => {
-        const progress = Math.min(
-          100, group.paid / group.target * 100
-        );
+const money = amount =>
+  "₦" + Number(amount).toLocaleString("en-NG");
 
-        return `
-          <div class="group">
-            <strong>${group.name}</strong>
-            <p class="muted">
-              ${money(group.paid)} raised of ${money(group.target)}
-            </p>
-            <div class="bar">
-              <div class="fill" style="width:${progress}%"></div>
-            </div>
-            <p class="muted">${Math.round(progress)}% completed</p>
-            <button onclick="addPayment(${index})">
-              Record Contribution
-            </button>
-          </div>
-        `;
-      }).join("");
+function render() {
+  document.getElementById("count").textContent =
+    groups.length;
+
+  const total = groups.reduce(
+    (sum, group) => sum + group.paid,
+    0
+  );
+
+  document.getElementById("total").textContent =
+    money(total);
+
+  const container = document.getElementById("groups");
+
+  if (!groups.length) {
+    container.innerHTML =
+      '<p class="muted">No groups yet. Create your first group above.</p>';
+    return;
+  }
+
+  container.innerHTML = groups.map((group, index) => {
+    const progress = Math.min(
+      100,
+      group.paid / group.target * 100
+    );
+
+    return `
+      <div class="group">
+        <strong>${group.name}</strong>
+        <p class="muted">
+          ${money(group.paid)} raised of ${money(group.target)}
+        </p>
+        <div class="bar">
+          <div class="fill" style="width:${progress}%"></div>
+        </div>
+        <p class="muted">
+          ${Math.round(progress)}% completed
+        </p>
+        <button onclick="addPayment(${index})">
+          Record Contribution
+        </button>
+      </div>
+    `;
+  }).join("");
+}
+
+document.getElementById("groupForm")
+  .addEventListener("submit", function(event) {
+    event.preventDefault();
+
+    const name =
+      document.getElementById("groupName").value.trim();
+
+    const target =
+      Number(document.getElementById("target").value);
+
+    if (!name || !Number.isFinite(target) || target <= 0) {
+      alert("Please enter a valid group name and target.");
+      return;
     }
 
-    document.getElementById("groupForm")
-      .addEventListener("submit", function(event) {
-        event.preventDefault();
+    groups.push({
+      name,
+      target,
+      paid: 0
+    });
 
-        const name =
-          document.getElementById("groupName").value.trim();
+    saveGroups();
+    this.reset();
+    render();
+  });
 
-        const target =
-          Number(document.getElementById("target").value);
+function addPayment(index) {
+  const amount = Number(
+    prompt("Enter contribution amount in Naira:")
+  );
 
-        if (!name || target <= 0) return;
+  if (!Number.isFinite(amount) || amount <= 0) return;
 
-        groups.push({
-          name,
-          target,
-          paid: 0
-        });
+  groups[index].paid += amount;
 
-        this.reset();
-        render();
-      });
+  saveGroups();
+  render();
+}
 
-    function addPayment(index) {
-      const amount = Number(
-        prompt("Enter contribution amount in Naira:")
-      );
+// Display saved groups when the app opens.
+render();
 
-      if (!Number.isFinite(amount) || amount <= 0) return;
-
-      groups[index].paid += amount;
-      render();
-    }
 
   </script>
 </body>
